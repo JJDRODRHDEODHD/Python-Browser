@@ -27,7 +27,10 @@ A simple and customizable web browser built with Python and PyQt5. This project 
 1. **Clone the repository**:
 
     ```bash
-    git clone https://github.com/yourusername/python-browser.git
+    git clone https://github.com/myusername/python-browser.git
+    ```
+    ```more bash
+    gh repo clone JJDRODRHDEODHD/Python-Browser
     ```
 
 2. **Navigate to the project directory**:
