@@ -21,8 +21,8 @@ class PythonBrowser(QMainWindow):
         self.tabs = QTabWidget()
         self.layout.addWidget(self.tabs)
 
-        # Create the first tab
-        self.create_new_tab(QUrl("http://www.google.com"))
+        # Create the first tab with the homepage
+        self.create_new_tab(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))
 
         # Sidebar for bookmarks (thinner)
         self.bookmarks_list = QListWidget()
@@ -132,7 +132,7 @@ class PythonBrowser(QMainWindow):
     def on_load_finished(self, success, tab):
         if not success:
             QMessageBox.warning(self, "Loading Error", "Failed to load the page.")
-            tab.setUrl(QUrl("http://www.google.com"))  # Fallback to homepage on error
+            tab.setUrl(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))  # Fallback to homepage on error
 
     def confirm_add_new_tab(self):
         reply = QMessageBox.question(
@@ -147,7 +147,7 @@ class PythonBrowser(QMainWindow):
             self.add_new_tab()
 
     def add_new_tab(self):
-        self.create_new_tab(QUrl("http://www.google.com"))
+        self.create_new_tab(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))
 
     def current_browser_back(self):
         current_browser = self.tabs.currentWidget()
@@ -167,7 +167,7 @@ class PythonBrowser(QMainWindow):
     def current_browser_home(self):
         current_browser = self.tabs.currentWidget()
         if current_browser:
-            current_browser.setUrl(QUrl("http://www.google.com"))
+            current_browser.setUrl(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))
 
     def navigate_to_url(self):
         url = self.url_bar.text()
@@ -197,7 +197,7 @@ class PythonBrowser(QMainWindow):
         return favicon_url  # Return URL directly for the icon
 
     def show_about(self):
-        QMessageBox.information(self, "About", "Python Browser\nVersion 1.0\nCreated by RobloxLiterature.")
+        QMessageBox.information(self, "About", "Python Browser\nVersion 1.1\nCreated by RobloxLiterature.")
 
 app = QApplication(sys.argv)
 browser_window = PythonBrowser()
