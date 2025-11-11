@@ -5,7 +5,7 @@ Read the AI generated description below not the thing above.
 
 # Python Browser
 
-A simple and customizable web browser built with Python and PyQt5. This project showcases a unique GUI with tabbed browsing, bookmark management, and an options menu.
+A simple and customizable web browser built with Python and PyQt5 (now PySide6, deal with it). This project showcases a unique GUI with tabbed browsing, bookmark management, and an options menu.
 
 ## Features
 
@@ -21,36 +21,17 @@ A simple and customizable web browser built with Python and PyQt5. This project 
 - **Python 3.x**
 - **PyQt5**
 - **PyQtWebEngine**
+- **Actually PySide6**
 
 ## Installation
 
-1. **Clone the repository**:
-
-    ```bash
-    git clone https://github.com/myusername/python-browser.git
-    ```
-    ```more bash
-    gh repo clone JJDRODRHDEODHD/Python-Browser
-    ```
-
-2. **Navigate to the project directory**:
-
-    ```bash
-    cd python-browser
-    ```
-
-3. **Install the required packages**:
-
-    ```bash
-    pip install PyQt5 PyQtWebEngine
-    ```
-
+1. you don't need a tutorial. just download it FROM THE RELEASE SECTION.
 ## Usage
 
 1. **Run the browser**:
 
     ```bash
-    python browser.py
+    py browser.py
     ```
 
 2. **Use the navigation bar** to browse the web, add bookmarks, and open new tabs.
@@ -67,6 +48,6 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 ## Acknowledgements
 
-- Thanks to the **PyQt5 community** for their documentation and support.
+- Thanks to the **PyQt5 community** (now PySide6) for their documentation and support.
 - Created by **RobloxLiterature**.
 
