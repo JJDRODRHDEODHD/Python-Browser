@@ -1,1 +1,2 @@
 Update 1.1: changed to new homepage etc
+Update 1.2: new bonlop site, looks better, upgraded to pyside6 because that is the only thing that works for me
