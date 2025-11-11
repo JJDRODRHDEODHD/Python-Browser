@@ -1,205 +1,267 @@
 import sys
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
-    QMainWindow, QApplication, QToolBar, QAction, QLineEdit, QMessageBox,
+from PySide6.QtCore import QUrl, Qt, QSize
+from PySide6.QtGui import QAction, QIcon
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QToolBar, QLineEdit, QMessageBox,
     QListWidget, QListWidgetItem, QWidget, QHBoxLayout, QTabWidget
 )
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebEngineWidgets import QWebEngineView
+
 
 class PythonBrowser(QMainWindow):
+    HOMEPAGE = QUrl("https://bonlop.pages.dev/")
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Python Browser")
+        self.setWindowIcon(QIcon())  # Optional: add custom icon file here
 
-        # Main widget and layout
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.layout = QHBoxLayout(self.central_widget)
+        # === Central Layout ===
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QHBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        # Tab widget for managing multiple tabs
+        # === Tabs ===
         self.tabs = QTabWidget()
-        self.layout.addWidget(self.tabs)
+        self.tabs.setTabsClosable(True)
+        self.tabs.tabCloseRequested.connect(self.close_tab)
+        self.tabs.currentChanged.connect(self.update_urlbar)
+        layout.addWidget(self.tabs)
 
-        # Create the first tab with the homepage
-        self.create_new_tab(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))
-
-        # Sidebar for bookmarks (thinner)
+        # === Bookmarks Sidebar ===
         self.bookmarks_list = QListWidget()
-        self.layout.addWidget(self.bookmarks_list)
-        self.bookmarks_list.setFixedWidth(100)  # Thinner sidebar
+        self.bookmarks_list.setFixedWidth(140)
+        self.bookmarks_list.itemDoubleClicked.connect(self.open_bookmark)
+        layout.addWidget(self.bookmarks_list)
 
-        # Navigation bar
+        # === Navigation Toolbar ===
         nav_bar = QToolBar("Navigation")
+        nav_bar.setIconSize(QSize(20, 20))
+        nav_bar.setMovable(False)
         self.addToolBar(nav_bar)
+        self.add_nav_buttons(nav_bar)
 
-        # Back button
-        back_btn = QAction("⬅️ Back", self)
-        back_btn.triggered.connect(self.current_browser_back)
-        nav_bar.addAction(back_btn)
+        # === Menu Bar ===
+        self.setup_menu()
 
-        # Forward button
-        forward_btn = QAction("➡️ Forward", self)
-        forward_btn.triggered.connect(self.current_browser_forward)
-        nav_bar.addAction(forward_btn)
+        # === Initial Tab ===
+        self.create_new_tab(self.HOMEPAGE)
 
-        # Reload button
-        reload_btn = QAction("🔄 Reload", self)
-        reload_btn.triggered.connect(self.current_browser_reload)
-        nav_bar.addAction(reload_btn)
+        # === Styling ===
+        self.apply_styles()
+        self.showMaximized()
 
-        # Home button
-        home_btn = QAction("🏠 Home", self)
-        home_btn.triggered.connect(self.current_browser_home)
-        nav_bar.addAction(home_btn)
+    # ---------------------------
+    # Toolbar Buttons
+    # ---------------------------
+    def add_nav_buttons(self, nav_bar):
+        btn_back = QAction("⬅️", self)
+        btn_back.setStatusTip("Go back")
+        btn_back.triggered.connect(lambda: self.browser_action("back"))
+        nav_bar.addAction(btn_back)
 
-        # URL bar
+        btn_forward = QAction("➡️", self)
+        btn_forward.setStatusTip("Go forward")
+        btn_forward.triggered.connect(lambda: self.browser_action("forward"))
+        nav_bar.addAction(btn_forward)
+
+        btn_reload = QAction("🔄", self)
+        btn_reload.setStatusTip("Reload page")
+        btn_reload.triggered.connect(lambda: self.browser_action("reload"))
+        nav_bar.addAction(btn_reload)
+
+        btn_home = QAction("🏠", self)
+        btn_home.setStatusTip("Go to homepage")
+        btn_home.triggered.connect(lambda: self.browser_action("home"))
+        nav_bar.addAction(btn_home)
+
+        nav_bar.addSeparator()
+
+        # URL Bar
         self.url_bar = QLineEdit()
+        self.url_bar.setPlaceholderText("Enter URL and press Enter...")
         self.url_bar.returnPressed.connect(self.navigate_to_url)
         nav_bar.addWidget(self.url_bar)
 
-        # Add bookmark button
-        bookmark_btn = QAction("⭐ Bookmark", self)
-        bookmark_btn.triggered.connect(self.add_bookmark)
-        nav_bar.addAction(bookmark_btn)
+        nav_bar.addSeparator()
 
-        # Add new tab button
-        add_tab_btn = QAction("+", self)
-        add_tab_btn.triggered.connect(self.confirm_add_new_tab)
-        nav_bar.addAction(add_tab_btn)
+        btn_bookmark = QAction("⭐", self)
+        btn_bookmark.setStatusTip("Add Bookmark")
+        btn_bookmark.triggered.connect(self.add_bookmark)
+        nav_bar.addAction(btn_bookmark)
 
-        # Update URL bar when the page changes
-        self.tabs.currentChanged.connect(self.update_urlbar)
+        btn_newtab = QAction("+", self)
+        btn_newtab.setStatusTip("Open New Tab")
+        btn_newtab.triggered.connect(self.confirm_add_new_tab)
+        nav_bar.addAction(btn_newtab)
 
-        # Options menu
-        options_menu = self.menuBar().addMenu("Options")
-        about_action = QAction("About", self)
-        about_action.triggered.connect(self.show_about)
-        options_menu.addAction(about_action)
+    # ---------------------------
+    # Tab Management
+    # ---------------------------
+    def create_new_tab(self, url: QUrl):
+        browser = QWebEngineView()
+        browser.setUrl(url)
+        index = self.tabs.addTab(browser, "New Tab")
+        self.tabs.setCurrentIndex(index)
 
-        self.showMaximized()
+        # Update title and URL bar dynamically
+        browser.titleChanged.connect(lambda title, br=browser: self.update_tab_title(br, title))
+        browser.urlChanged.connect(lambda qurl: self.update_urlbar(qurl))
+        browser.loadFinished.connect(lambda ok, br=browser: self.handle_load_finished(ok, br))
 
-        # Custom styling
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #282c34; /* Dark background */
-            }
-            QToolBar {
-                background-color: #3e4451; /* Toolbar background */
-            }
-            QLineEdit {
-                background-color: #1e2127; /* URL bar background */
-                color: white; /* Text color */
-                padding: 5px; /* Padding */
-            }
-            QLineEdit:focus {
-                background-color: #3e4451; /* Change on focus */
-            }
-            QAction {
-                color: white; /* Button text color */
-                padding: 10px; /* Button padding */
-            }
-            QMenuBar {
-                background-color: #3e4451; /* Menu bar background */
-            }
-            QMenu {
-                background-color: #3e4451; /* Menu background */
-                color: white; /* Menu text color */
-                border: none; /* No border */
-            }
-            QMenu::item:selected {
-                background-color: #50555b; /* Highlighted menu item */
-            }
-            QListWidget {
-                background-color: #1e2127; /* Bookmarks background */
-                color: white; /* Bookmarks text color */
-                border: none; /* No border */
-            }
-            QListWidget::item:selected {
-                background-color: #50555b; /* Highlighted bookmark */
-            }
-        """)
+    def close_tab(self, index):
+        if self.tabs.count() > 1:
+            self.tabs.removeTab(index)
+        else:
+            self.close()
 
-    def create_new_tab(self, url):
-        new_tab = QWebEngineView()
-        new_tab.setUrl(url)
-        self.tabs.addTab(new_tab, url.toString())
+    def update_tab_title(self, browser, title):
+        index = self.tabs.indexOf(browser)
+        if index >= 0:
+            self.tabs.setTabText(index, title[:20] + ("…" if len(title) > 20 else ""))
 
-        # Connect the URL bar to the new tab's URL
-        new_tab.urlChanged.connect(lambda qurl: self.update_urlbar(qurl))
-        new_tab.loadFinished.connect(lambda success: self.on_load_finished(success, new_tab))
+    # ---------------------------
+    # Navigation
+    # ---------------------------
+    def browser_action(self, action):
+        browser = self.tabs.currentWidget()
+        if not isinstance(browser, QWebEngineView):
+            return
 
-    def on_load_finished(self, success, tab):
-        if not success:
-            QMessageBox.warning(self, "Loading Error", "Failed to load the page.")
-            tab.setUrl(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))  # Fallback to homepage on error
-
-    def confirm_add_new_tab(self):
-        reply = QMessageBox.question(
-            self,
-            'Confirm Open Tab',
-            "Are you sure you want to do this? It might crash the browser.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            self.add_new_tab()
-
-    def add_new_tab(self):
-        self.create_new_tab(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))
-
-    def current_browser_back(self):
-        current_browser = self.tabs.currentWidget()
-        if current_browser:
-            current_browser.back()
-
-    def current_browser_forward(self):
-        current_browser = self.tabs.currentWidget()
-        if current_browser:
-            current_browser.forward()
-
-    def current_browser_reload(self):
-        current_browser = self.tabs.currentWidget()
-        if current_browser:
-            current_browser.reload()
-
-    def current_browser_home(self):
-        current_browser = self.tabs.currentWidget()
-        if current_browser:
-            current_browser.setUrl(QUrl("https://bonlop.tiiny.site/#gsc.tab=0"))
+        match action:
+            case "back":
+                browser.back()
+            case "forward":
+                browser.forward()
+            case "reload":
+                browser.reload()
+            case "home":
+                browser.setUrl(self.HOMEPAGE)
 
     def navigate_to_url(self):
-        url = self.url_bar.text()
-        current_browser = self.tabs.currentWidget()
-        if current_browser:
-            # Try to set the URL, handle any exceptions
-            try:
-                current_browser.setUrl(QUrl(url))
-            except Exception as e:
-                QMessageBox.warning(self, "Invalid URL", str(e))
+        url = self.url_bar.text().strip()
+        if not url:
+            return
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+        self.tabs.currentWidget().setUrl(QUrl(url))
 
-    def update_urlbar(self, qurl):
-        self.url_bar.setText(qurl.toString())
+    def update_urlbar(self, qurl=None):
+        if not qurl and self.tabs.currentWidget():
+            qurl = self.tabs.currentWidget().url()
+        if qurl:
+            self.url_bar.setText(qurl.toString())
 
+    # ---------------------------
+    # Bookmarks
+    # ---------------------------
     def add_bookmark(self):
-        current_browser = self.tabs.currentWidget()
-        if current_browser:
-            current_url = current_browser.url().toString()
-            if current_url:
-                icon_url = self.get_favicon(current_url)
-                item = QListWidgetItem(QIcon(icon_url), current_url)
-                self.bookmarks_list.addItem(item)
+        browser = self.tabs.currentWidget()
+        if isinstance(browser, QWebEngineView):
+            url = browser.url().toString()
+            title = browser.title() or url
+            item = QListWidgetItem(QIcon(self.get_favicon(url)), title)
+            item.setData(Qt.UserRole, url)
+            self.bookmarks_list.addItem(item)
+
+    def open_bookmark(self, item):
+        url = item.data(Qt.UserRole)
+        if url:
+            self.tabs.currentWidget().setUrl(QUrl(url))
 
     def get_favicon(self, url):
         domain = QUrl(url).host()
-        favicon_url = f"https://{domain}/favicon.ico"
-        return favicon_url  # Return URL directly for the icon
+        return f"https://{domain}/favicon.ico"
+
+    # ---------------------------
+    # Tabs and Loading
+    # ---------------------------
+    def confirm_add_new_tab(self):
+        reply = QMessageBox.question(
+            self, "Confirm", "Open a new tab? This may slow down the browser.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            self.create_new_tab(self.HOMEPAGE)
+
+    def handle_load_finished(self, success, browser):
+        if not success:
+            QMessageBox.warning(self, "Load Error", "Failed to load the page. Returning to homepage.")
+            browser.setUrl(self.HOMEPAGE)
+
+    # ---------------------------
+    # Menu
+    # ---------------------------
+    def setup_menu(self):
+        menu = self.menuBar().addMenu("Options")
+
+        about_action = QAction("About", self)
+        about_action.triggered.connect(self.show_about)
+        menu.addAction(about_action)
+
+        exit_action = QAction("Exit", self)
+        exit_action.triggered.connect(self.close)
+        menu.addAction(exit_action)
 
     def show_about(self):
-        QMessageBox.information(self, "About", "Python Browser\nVersion 1.1\nCreated by RobloxLiterature.")
+        QMessageBox.information(
+            self,
+            "About Python Browser",
+            "Python Browser v1.2\nBuilt with PySide6\nCreated by RobloxLiterature."
+        )
 
-app = QApplication(sys.argv)
-browser_window = PythonBrowser()
-browser_window.showMaximized()
-sys.exit(app.exec_())
+    # ---------------------------
+    # Styling
+    # ---------------------------
+    def apply_styles(self):
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #20232a;
+            }
+            QToolBar {
+                background-color: #2c313c;
+                border: none;
+                padding: 5px;
+            }
+            QLineEdit {
+                background-color: #1e2127;
+                color: #ffffff;
+                padding: 6px;
+                border-radius: 4px;
+                border: 1px solid #3e4451;
+            }
+            QLineEdit:focus {
+                border: 1px solid #61afef;
+            }
+            QListWidget {
+                background-color: #1e2127;
+                color: #ffffff;
+                border: none;
+                padding: 5px;
+            }
+            QListWidget::item:selected {
+                background-color: #3e4451;
+            }
+            QMenuBar {
+                background-color: #2c313c;
+                color: white;
+            }
+            QMenuBar::item:selected {
+                background-color: #3e4451;
+            # }
+            QMenu {
+                background-color: #2c313c;
+                color: white;
+            }
+            QMenu::item:selected {
+                background-color: #3e4451;
+            }
+        """)
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = PythonBrowser()
+    window.show()
+    sys.exit(app.exec())
